@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,6 +76,8 @@ public abstract class AbstractRegistry implements Registry {
     // Local disk cache file
     private File file;
 
+    private AtomicBoolean destroyed = new AtomicBoolean(false);
+
     public AbstractRegistry(URL url) {
         setUrl(url);
         // Start file save timer
@@ -95,7 +98,7 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     protected static List<URL> filterEmpty(URL url, List<URL> urls) {
-        if (urls == null || urls.isEmpty()) {
+        if (urls == null || urls.size() == 0) {
             List<URL> result = new ArrayList<URL>(1);
             result.add(url.setProtocol(Constants.EMPTY_PROTOCOL));
             return result;
@@ -250,7 +253,7 @@ public abstract class AbstractRegistry implements Registry {
             };
             subscribe(url, listener); // Subscribe logic guarantees the first notify to return
             List<URL> urls = reference.get();
-            if (urls != null && !urls.isEmpty()) {
+            if (urls != null && urls.size() > 0) {
                 for (URL u : urls) {
                     if (!Constants.EMPTY_PROTOCOL.equals(u.getProtocol())) {
                         result.add(u);
@@ -371,7 +374,7 @@ public abstract class AbstractRegistry implements Registry {
         if (listener == null) {
             throw new IllegalArgumentException("notify listener == null");
         }
-        if ((urls == null || urls.isEmpty())
+        if ((urls == null || urls.size() == 0)
                 && !Constants.ANY_VALUE.equals(url.getServiceInterface())) {
             logger.warn("Ignore empty notify urls for subscribe url " + url);
             return;
@@ -439,6 +442,10 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     public void destroy() {
+        if (!destroyed.compareAndSet(false, true)) {
+            return;
+        }
+
         if (logger.isInfoEnabled()) {
             logger.info("Destroy registry:" + getUrl());
         }

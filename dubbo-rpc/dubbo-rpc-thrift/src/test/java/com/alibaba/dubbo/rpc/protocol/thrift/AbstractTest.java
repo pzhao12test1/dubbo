@@ -18,7 +18,6 @@ package com.alibaba.dubbo.rpc.protocol.thrift;
 
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
-import com.alibaba.dubbo.common.utils.NetUtils;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.Protocol;
 import com.alibaba.dubbo.rpc.gen.dubbo.$__DemoStub;
@@ -35,9 +34,11 @@ import org.apache.thrift.transport.TTransportFactory;
 import org.junit.After;
 import org.junit.Before;
 
+/**
+ */
 public abstract class AbstractTest {
 
-    protected int PORT = NetUtils.getAvailablePort();
+    static final int PORT = 30660;
 
     protected TServer server;
 
@@ -45,11 +46,8 @@ public abstract class AbstractTest {
 
     protected Invoker<?> invoker;
 
-    TServerTransport serverTransport;
-
     protected void init() throws Exception {
-
-        serverTransport = new TServerSocket(PORT);
+        TServerTransport serverTransport = new TServerSocket(PORT);
 
         TBinaryProtocol.Factory bFactory = new TBinaryProtocol.Factory();
 
@@ -100,15 +98,6 @@ public abstract class AbstractTest {
         if (invoker != null) {
             invoker.destroy();
             invoker = null;
-        }
-
-        try{
-            if(serverTransport != null){
-                // release port if used
-                serverTransport.close();
-            }
-        }catch (Exception e) {
-            // ignore
         }
 
     }

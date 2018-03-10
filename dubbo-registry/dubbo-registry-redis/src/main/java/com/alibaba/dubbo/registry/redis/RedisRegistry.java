@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 1999-2012 Alibaba Group.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -183,7 +182,7 @@ public class RedisRegistry extends FailbackRegistry {
                         break;//  If the server side has synchronized data, just write a single machine
                     }
                 } finally {
-                    jedis.close();
+                    jedisPool.returnResource(jedis);
                 }
             } catch (Throwable t) {
                 logger.warn("Failed to write provider heartbeat to redis registry. registry: " + entry.getKey() + ", cause: " + t.getMessage(), t);
@@ -194,7 +193,7 @@ public class RedisRegistry extends FailbackRegistry {
     // The monitoring center is responsible for deleting outdated dirty data
     private void clean(Jedis jedis) {
         Set<String> keys = jedis.keys(root + Constants.ANY_VALUE);
-        if (keys != null && !keys.isEmpty()) {
+        if (keys != null && keys.size() > 0) {
             for (String key : keys) {
                 Map<String, String> values = jedis.hgetAll(key);
                 if (values != null && values.size() > 0) {
@@ -230,7 +229,7 @@ public class RedisRegistry extends FailbackRegistry {
                         return true; // At least one single machine is available.
                     }
                 } finally {
-                    jedis.close();
+                    jedisPool.returnResource(jedis);
                 }
             } catch (Throwable t) {
             }
@@ -282,7 +281,7 @@ public class RedisRegistry extends FailbackRegistry {
                         break; //  If the server side has synchronized data, just write a single machine
                     }
                 } finally {
-                    jedis.close();
+                    jedisPool.returnResource(jedis);
                 }
             } catch (Throwable t) {
                 exception = new RpcException("Failed to register service to redis registry. registry: " + entry.getKey() + ", service: " + url + ", cause: " + t.getMessage(), t);
@@ -315,7 +314,7 @@ public class RedisRegistry extends FailbackRegistry {
                         break; //  If the server side has synchronized data, just write a single machine
                     }
                 } finally {
-                    jedis.close();
+                    jedisPool.returnResource(jedis);
                 }
             } catch (Throwable t) {
                 exception = new RpcException("Failed to unregister service to redis registry. registry: " + entry.getKey() + ", service: " + url + ", cause: " + t.getMessage(), t);
@@ -352,7 +351,7 @@ public class RedisRegistry extends FailbackRegistry {
                     if (service.endsWith(Constants.ANY_VALUE)) {
                         admin = true;
                         Set<String> keys = jedis.keys(service);
-                        if (keys != null && !keys.isEmpty()) {
+                        if (keys != null && keys.size() > 0) {
                             Map<String, Set<String>> serviceKeys = new HashMap<String, Set<String>>();
                             for (String key : keys) {
                                 String serviceKey = toServicePath(key);
@@ -373,7 +372,7 @@ public class RedisRegistry extends FailbackRegistry {
                     success = true;
                     break; // Just read one server's data
                 } finally {
-                    jedis.close();
+                    jedisPool.returnResource(jedis);
                 }
             } catch (Throwable t) { // Try the next server
                 exception = new RpcException("Failed to subscribe service from redis registry. registry: " + entry.getKey() + ", service: " + url + ", cause: " + t.getMessage(), t);
@@ -399,8 +398,8 @@ public class RedisRegistry extends FailbackRegistry {
     }
 
     private void doNotify(Jedis jedis, Collection<String> keys, URL url, Collection<NotifyListener> listeners) {
-        if (keys == null || keys.isEmpty()
-                || listeners == null || listeners.isEmpty()) {
+        if (keys == null || keys.size() == 0
+                || listeners == null || listeners.size() == 0) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -442,7 +441,7 @@ public class RedisRegistry extends FailbackRegistry {
                 logger.info("redis notify: " + key + " = " + urls);
             }
         }
-        if (result == null || result.isEmpty()) {
+        if (result == null || result.size() == 0) {
             return;
         }
         for (NotifyListener listener : listeners) {
@@ -498,7 +497,7 @@ public class RedisRegistry extends FailbackRegistry {
                     try {
                         doNotify(jedis, key);
                     } finally {
-                        jedis.close();
+                        jedisPool.returnResource(jedis);
                     }
                 } catch (Throwable t) { // TODO Notification failure does not restore mechanism guarantee
                     logger.error(t.getMessage(), t);
@@ -584,7 +583,7 @@ public class RedisRegistry extends FailbackRegistry {
                                             if (!first) {
                                                 first = false;
                                                 Set<String> keys = jedis.keys(service);
-                                                if (keys != null && !keys.isEmpty()) {
+                                                if (keys != null && keys.size() > 0) {
                                                     for (String s : keys) {
                                                         doNotify(jedis, s);
                                                     }
@@ -602,7 +601,7 @@ public class RedisRegistry extends FailbackRegistry {
                                         }
                                         break;
                                     } finally {
-                                        jedis.close();
+                                        jedisPool.returnBrokenResource(jedis);
                                     }
                                 } catch (Throwable t) { // Retry another server
                                     logger.warn("Failed to subscribe service from redis registry. registry: " + entry.getKey() + ", cause: " + t.getMessage(), t);

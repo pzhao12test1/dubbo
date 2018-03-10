@@ -127,7 +127,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
             }
             // The Value in the KV part, if Value have more than one items.
             else if (",".equals(separator)) { // Should be seperateed by ','
-                if (values == null || values.isEmpty())
+                if (values == null || values.size() == 0)
                     throw new ParseException("Illegal route rule \""
                             + rule + "\", The error char '" + separator
                             + "' at index " + matcher.start() + " before \""
@@ -144,7 +144,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
 
     public <T> List<Invoker<T>> route(List<Invoker<T>> invokers, URL url, Invocation invocation)
             throws RpcException {
-        if (invokers == null || invokers.isEmpty()) {
+        if (invokers == null || invokers.size() == 0) {
             return invokers;
         }
         try {
@@ -161,7 +161,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
                     result.add(invoker);
                 }
             }
-            if (!result.isEmpty()) {
+            if (result.size() > 0) {
                 return result;
             } else if (force) {
                 logger.warn("The route result is empty and force execute. consumer: " + NetUtils.getLocalHost() + ", service: " + url.getServiceKey() + ", router: " + url.getParameterAndDecoded(Constants.RULE_KEY));
@@ -204,9 +204,6 @@ public class ConditionRouter implements Router, Comparable<Router> {
                 sampleValue = invocation.getMethodName();
             } else {
                 sampleValue = sample.get(key);
-                if (sampleValue == null) {
-                    sampleValue = sample.get(Constants.DEFAULT_KEY_PREFIX + key);
-                }
             }
             if (sampleValue != null) {
                 if (!matchPair.getValue().isMatch(sampleValue, param)) {
@@ -216,7 +213,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
                 }
             } else {
                 //not pass the condition
-                if (!matchPair.getValue().matches.isEmpty()) {
+                if (matchPair.getValue().matches.size() > 0) {
                     return false;
                 } else {
                     result = true;
@@ -231,7 +228,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
         final Set<String> mismatches = new HashSet<String>();
 
         private boolean isMatch(String value, URL param) {
-            if (!matches.isEmpty() && mismatches.isEmpty()) {
+            if (matches.size() > 0 && mismatches.size() == 0) {
                 for (String match : matches) {
                     if (UrlUtils.isMatchGlobPattern(match, value, param)) {
                         return true;
@@ -240,7 +237,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
                 return false;
             }
 
-            if (!mismatches.isEmpty() && matches.isEmpty()) {
+            if (mismatches.size() > 0 && matches.size() == 0) {
                 for (String mismatch : mismatches) {
                     if (UrlUtils.isMatchGlobPattern(mismatch, value, param)) {
                         return false;
@@ -249,7 +246,7 @@ public class ConditionRouter implements Router, Comparable<Router> {
                 return true;
             }
 
-            if (!matches.isEmpty() && !mismatches.isEmpty()) {
+            if (matches.size() > 0 && mismatches.size() > 0) {
                 //when both mismatches and matches contain the same value, then using mismatches first
                 for (String mismatch : mismatches) {
                     if (UrlUtils.isMatchGlobPattern(mismatch, value, param)) {
